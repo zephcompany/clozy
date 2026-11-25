@@ -120,16 +120,20 @@
     const c = cover(), r = devicePixelRatio, W = zcv.width, H = zcv.height;
     zctx.clearRect(0, 0, W, H);
     if (vid.px <= 0) { zctx.imageSmoothingEnabled = true; zctx.drawImage(zs.q[i], c.ox * r, c.oy * r, zw * c.k * r, zh * c.k * r); return; }
-    // fim da dobra: a imagem vira blocos cada vez maiores e os blocos somem até sobrar o fundo
-    const G = Math.max(40, Math.round(Math.max(innerWidth, innerHeight) / 22)) * r;
-    const bloco = G / [16, 8, 4, 2, 1][Math.min(4, Math.floor(vid.px * 7))];
-    const mw = Math.ceil(W / bloco), mh = Math.ceil(H / bloco);
-    zMini.width = mw; zMini.height = mh;
-    zmx.drawImage(zs.q[i], c.ox * r / bloco, c.oy * r / bloco, zw * c.k * r / bloco, zh * c.k * r / bloco);
-    zctx.imageSmoothingEnabled = false; zctx.drawImage(zMini, 0, 0, mw * bloco, mh * bloco);
-    const some = Math.max(0, (vid.px - .3) / .7);
-    if (some > 0) { zctx.fillStyle = zBg;
-      for (let y = 0; y * G < H; y++) for (let x = 0; x * G < W; x++) if (zSorte(x, y) < some * 1.02) zctx.fillRect(x * G, y * G, G + 1, G + 1); }
+    // fim da dobra: uma onda sobe pela tela; na frente dela a imagem vira mosaico e cada bloco encolhe até virar ponto e sumir
+    zctx.imageSmoothingEnabled = true; zctx.drawImage(zs.q[i], c.ox * r, c.oy * r, zw * c.k * r, zh * c.k * r);
+    const G = Math.round(Math.max(innerWidth, innerHeight) / 38) * r, cols = Math.ceil(W / G), lin = Math.ceil(H / G);
+    zMini.width = cols; zMini.height = lin;
+    zmx.drawImage(zs.q[i], c.ox * r / G, c.oy * r / G, zw * c.k * r / G, zh * c.k * r / G);
+    const d = zmx.getImageData(0, 0, cols, lin).data, faixa = .34, t = vid.px * (1 + faixa);
+    for (let y = 0; y < lin; y++) for (let x = 0; x < cols; x++) {
+      const lim = (1 - y / lin) * .62 + (x / cols) * .14 + zSorte(x, y) * .24;
+      const l = Math.min(1, Math.max(0, (t - lim) / faixa)); if (l <= 0) continue;
+      zctx.fillStyle = zBg; zctx.fillRect(x * G, y * G, G + 1, G + 1); if (l >= 1) continue;
+      const e = l * l * (3 - 2 * l), n = (y * cols + x) * 4, m = e * .75, lado = G * (1 - e) * .94, o = (G - lado) / 2;
+      zctx.fillStyle = `rgb(${d[n] + (255 - d[n]) * m | 0},${d[n + 1] + (0 - d[n + 1]) * m | 0},${d[n + 2] + (149 - d[n + 2]) * m | 0})`;
+      zctx.beginPath(); zctx.roundRect ? zctx.roundRect(x * G + o, y * G + o, lado, lado, lado * (.12 + e * .38)) : zctx.rect(x * G + o, y * G + o, lado, lado); zctx.fill();
+    }
   };
   const zRes = () => { zcv.width = innerWidth * devicePixelRatio; zcv.height = innerHeight * devicePixelRatio; zAt = -1; zPinta(); };
   addEventListener('resize', zRes);
@@ -155,8 +159,8 @@
     .to({}, { duration: .25 })
     // pixeliza e troca de dobra
     .to(vid, { px: 1, duration: .75, ease: 'none', onUpdate: zPinta }, 3.6)
-    .to('.zoom__in', { opacity: 0, y: -40, duration: .3, ease: 'power1.in' }, 3.85)
-    .to(foto, { '--o': 0, duration: .3 }, 3.75)
+    .to('.zoom__in', { opacity: 0, y: -40, duration: .22, ease: 'power1.in' }, 3.5)
+    .to(foto, { '--o': 0, duration: .25 }, 3.55)
     .to({}, { duration: .08 });
 
   /* ---------- manifesto: texto preenchendo ---------- */
