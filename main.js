@@ -96,7 +96,7 @@
   }
 
   /* ---------- ZOOM DA CHAMA + vídeo do barco preso ao scroll ---------- */
-  const foto = $('.zoom__photo'), fimg = $('img', foto), zcv = $('.zoom__cv'), zctx = zcv.getContext('2d');
+  const foto = $('.zoom__photo'), zcv = $('.zoom__cv'), zctx = zcv.getContext('2d');
   // sequência de imagens: carrega do mais espaçado para o mais fino e pinta o quadro pronto mais próximo
   const sequencia = (pasta, n, aoCarregar) => {
     const q = new Array(n), passo = desk ? 1 : 2, ordem = [0, n - 1];
@@ -109,17 +109,32 @@
       perto: i => { for (let d = 0; d < n; d++) { if (q[i - d]) return i - d; if (q[i + d]) return i + d; } return -1; } };
   };
   const ZN = 72; let zw = 0, zh = 0, zPronto = false, zAt = -1;
-  const vid = { p: 0 };
+  const vid = { p: 0, px: 0 }; let zPx = -1;
+  const zProx = $('.zoom').nextElementSibling, zCor = zProx && getComputedStyle(zProx).backgroundColor, zBg = zCor && !/rgba\(0, 0, 0, 0\)|transparent/.test(zCor) ? zCor : '#0a0508', zMini = document.createElement('canvas'), zmx = zMini.getContext('2d');
+  const zSorte = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
   const cover = () => { const W = innerWidth, H = innerHeight, k = Math.max(W / zw, H / zh); const fx = W < H ? .47 : .5; return { k, ox: Math.min(0, Math.max(W - zw * k, W / 2 - zw * k * fx)), oy: (H - zh * k) * .32 }; };
   const zPinta = () => {
     if (!zPronto) return;
     const i = zs.perto(Math.round(vid.p * (ZN - 1)));
-    if (i >= 0 && i !== zAt) { zAt = i; const c = cover(), r = devicePixelRatio; zctx.clearRect(0, 0, zcv.width, zcv.height); zctx.drawImage(zs.q[i], c.ox * r, c.oy * r, zw * c.k * r, zh * c.k * r); }
+    if (i < 0 || (i === zAt && vid.px === zPx)) return; zAt = i; zPx = vid.px;
+    const c = cover(), r = devicePixelRatio, W = zcv.width, H = zcv.height;
+    zctx.clearRect(0, 0, W, H);
+    if (vid.px <= 0) { zctx.imageSmoothingEnabled = true; zctx.drawImage(zs.q[i], c.ox * r, c.oy * r, zw * c.k * r, zh * c.k * r); return; }
+    // fim da dobra: a imagem vira blocos cada vez maiores e os blocos somem até sobrar o fundo
+    const G = Math.max(40, Math.round(Math.max(innerWidth, innerHeight) / 22)) * r;
+    const bloco = G / [16, 8, 4, 2, 1][Math.min(4, Math.floor(vid.px * 7))];
+    const mw = Math.ceil(W / bloco), mh = Math.ceil(H / bloco);
+    zMini.width = mw; zMini.height = mh;
+    zmx.drawImage(zs.q[i], c.ox * r / bloco, c.oy * r / bloco, zw * c.k * r / bloco, zh * c.k * r / bloco);
+    zctx.imageSmoothingEnabled = false; zctx.drawImage(zMini, 0, 0, mw * bloco, mh * bloco);
+    const some = Math.max(0, (vid.px - .3) / .7);
+    if (some > 0) { zctx.fillStyle = zBg;
+      for (let y = 0; y * G < H; y++) for (let x = 0; x * G < W; x++) if (zSorte(x, y) < some * 1.02) zctx.fillRect(x * G, y * G, G + 1, G + 1); }
   };
   const zRes = () => { zcv.width = innerWidth * devicePixelRatio; zcv.height = innerHeight * devicePixelRatio; zAt = -1; zPinta(); };
   addEventListener('resize', zRes);
   const zs = sequencia(zcv.dataset.seq, ZN, i => {
-    if (!zPronto) { zw = zs.q[i].naturalWidth; zh = zs.q[i].naturalHeight; zPronto = true; zRes(); zcv.classList.add('on'); fimg.style.opacity = 0; }
+    if (!zPronto) { zw = zs.q[i].naturalWidth; zh = zs.q[i].naturalHeight; zPronto = true; zRes(); zcv.classList.add('on'); }
     zAt = -1; zPinta(); });
   zs.inicia();
   const tl = gsap.timeline({ scrollTrigger: { trigger: '.zoom', start: 'top top', end: 'bottom bottom', scrub: .5 } });
@@ -128,7 +143,7 @@
         const base = Math.min(innerWidth, innerHeight) * .26, alvo = Math.max(innerWidth, innerHeight) * 9;
         foto.style.setProperty('--s', (base * Math.pow(alvo / base, z.p)).toFixed(1) + 'px');
       } }, 0)
-    .fromTo([fimg, zcv], { scale: 1.5 }, { scale: 1, duration: 1.1, ease: 'none' }, 0)
+    .fromTo(zcv, { scale: 1.5 }, { scale: 1, duration: 1.1, ease: 'none' }, 0)
     .to('.zoom__w--l', { xPercent: -70, opacity: 0, duration: .5, ease: 'power1.in' }, .12)
     .to('.zoom__w--r', { xPercent: 70, opacity: 0, duration: .5, ease: 'power1.in' }, .12)
     .to('.zoom__glow', { scale: 4, opacity: 0, duration: .7 }, .1)
@@ -137,7 +152,12 @@
     .to(vid, { p: 1, duration: 1.7, ease: 'none', onUpdate: zPinta }, 1.05)
     .to(foto, { '--o': 1, duration: .3 }, 2.95)
     .fromTo('.zoom__in', { opacity: 0, y: 90 }, { opacity: 1, y: 0, duration: .35, ease: 'power2.out' }, 3.0)
-    .to({}, { duration: .3 });
+    .to({}, { duration: .25 })
+    // pixeliza e troca de dobra
+    .to(vid, { px: 1, duration: .75, ease: 'none', onUpdate: zPinta }, 3.6)
+    .to('.zoom__in', { opacity: 0, y: -40, duration: .3, ease: 'power1.in' }, 3.85)
+    .to(foto, { '--o': 0, duration: .3 }, 3.75)
+    .to({}, { duration: .08 });
 
   /* ---------- manifesto: texto preenchendo ---------- */
   $$('[data-fill]').forEach(p => {
