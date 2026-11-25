@@ -95,22 +95,48 @@
     hero.addEventListener('pointermove', e => { const nx = e.clientX / innerWidth - .5; camadas.forEach(c => c.x(nx * -46 * c.d)); bgx(nx * 22); });
   }
 
-  /* ---------- ZOOM DA CHAMA ---------- */
-  const foto = $('.zoom__photo'), fimg = $('img', foto);
+  /* ---------- ZOOM DA CHAMA + vídeo do barco preso ao scroll ---------- */
+  const foto = $('.zoom__photo'), fimg = $('img', foto), zcv = $('.zoom__cv'), zctx = zcv.getContext('2d');
+  const zq = []; let zw = 0, zh = 0, zPronto = false, zAt = -1;
+  const vid = { p: 0 };
+  const cover = () => { const W = innerWidth, H = innerHeight, k = Math.max(W / zw, H / zh); const fx = W < H ? .47 : .5; return { k, ox: Math.min(0, Math.max(W - zw * k, W / 2 - zw * k * fx)), oy: (H - zh * k) * .32 }; };
+  const zPinta = () => {
+    if (!zPronto) return;
+    const i = Math.min(zq.length - 1, Math.round((1 - vid.p) * (zq.length - 1)));
+    if (i !== zAt) { zAt = i; const c = cover(); zctx.clearRect(0, 0, zcv.width, zcv.height); zctx.drawImage(zq[i], c.ox * devicePixelRatio, c.oy * devicePixelRatio, zw * c.k * devicePixelRatio, zh * c.k * devicePixelRatio); }
+  };
+  const zRes = () => { zcv.width = innerWidth * devicePixelRatio; zcv.height = innerHeight * devicePixelRatio; zAt = -1; zPinta(); };
+  addEventListener('resize', zRes);
+  (async () => {
+    try {
+      const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = zcv.dataset.h;
+      await new Promise((ok, no) => { v.addEventListener('loadeddata', ok, { once: true }); v.addEventListener('error', no, { once: true }); });
+      zw = v.videoWidth; zh = v.videoHeight; zRes();
+      const N = desk ? 90 : 50, larg = desk ? Math.min(zw, 1280) : 640, alt = Math.round(larg * zh / zw), dur = v.duration - .08;
+      for (let i = 0; i < N; i++) {
+        v.currentTime = dur * i / (N - 1);
+        await new Promise(ok => v.addEventListener('seeked', ok, { once: true }));
+        const oc = document.createElement('canvas'); oc.width = larg; oc.height = alt; oc.getContext('2d').drawImage(v, 0, 0, larg, alt); zq.push(oc);
+      }
+      zPronto = true; zAt = -1; zPinta(); zcv.classList.add('on'); fimg.style.opacity = 0;
+    } catch (e) { /* sem vídeo: fica a foto */ }
+  })();
   const tl = gsap.timeline({ scrollTrigger: { trigger: '.zoom', start: 'top top', end: 'bottom bottom', scrub: .5 } });
   const z = { p: 0 };
   tl.to(z, { p: 1, duration: 1, ease: 'power2.in', onUpdate: () => {
         const base = Math.min(innerWidth, innerHeight) * .26, alvo = Math.max(innerWidth, innerHeight) * 9;
         foto.style.setProperty('--s', (base * Math.pow(alvo / base, z.p)).toFixed(1) + 'px');
       } }, 0)
-    .fromTo(fimg, { scale: 1.5 }, { scale: 1, duration: 1.3, ease: 'none' }, 0)
+    .fromTo([fimg, zcv], { scale: 1.5 }, { scale: 1, duration: 1.1, ease: 'none' }, 0)
     .to('.zoom__w--l', { xPercent: -70, opacity: 0, duration: .5, ease: 'power1.in' }, .12)
     .to('.zoom__w--r', { xPercent: 70, opacity: 0, duration: .5, ease: 'power1.in' }, .12)
     .to('.zoom__glow', { scale: 4, opacity: 0, duration: .7 }, .1)
     .to('.zoom__hint', { opacity: 0, duration: .15 }, .05)
-    .to(foto, { '--o': 1, duration: .3 }, .85)
-    .fromTo('.zoom__in', { opacity: 0, y: 90 }, { opacity: 1, y: 0, duration: .35, ease: 'power2.out' }, .92)
-    .to({}, { duration: .25 });
+    // ela vira e mostra o celular
+    .to(vid, { p: 1, duration: 1.7, ease: 'none', onUpdate: zPinta }, 1.05)
+    .to(foto, { '--o': 1, duration: .3 }, 2.95)
+    .fromTo('.zoom__in', { opacity: 0, y: 90 }, { opacity: 1, y: 0, duration: .35, ease: 'power2.out' }, 3.0)
+    .to({}, { duration: .3 });
 
   /* ---------- manifesto: texto preenchendo ---------- */
   $$('[data-fill]').forEach(p => {
@@ -131,6 +157,36 @@
     cards.forEach((c, i) => gsap.from(c, { y: 120 + i * 30, opacity: 0, duration: 1.1, ease: 'power3.out', delay: i * .06, scrollTrigger: { trigger: '.hz', start: 'top 55%' } }));
   }
 
+  /* conversa ao vivo no card de IA */
+  $$('[data-chat]').forEach(box => {
+    const roteiro = [
+      ['in', 'Oi! Vi seu perfil agora', 1300],
+      ['out', '<small>Resposta automática</small>Que bom te ver aqui! Meu conteúdo VIP está liberado para assinantes.', 1500],
+      ['btn', 'Assinar agora →', 700],
+      ['in', 'Pronto, assinei!', 1200],
+      ['sys', 'Nova assinatura · + R$ 29,90', 0],
+      ['out', '<small>Resposta automática</small>Bem-vindo! Já liberei tudo pra você.', 1300]
+    ];
+    let vivo = false, rodando = false;
+    const espera = ms => new Promise(r => setTimeout(r, ms));
+    const add = (cls, html) => { const p = document.createElement('p'); p.className = cls; p.innerHTML = html; box.appendChild(p); while (box.children.length > 6) box.firstChild.remove(); return p; };
+    const roda = async () => {
+      if (rodando) return; rodando = true;
+      while (vivo) {
+        box.classList.remove('limpa'); box.replaceChildren(); await espera(600);
+        for (const [tipo, txt, digita] of roteiro) {
+          if (!vivo) break;
+          if (digita) { const t = add('ai__typing' + (tipo === 'in' ? '' : ' r'), '<i></i><i></i><i></i>'); await espera(digita); t.remove(); }
+          add({ in: 'ai__in', out: 'ai__out', btn: 'ai__out ai__out--btn', sys: 'ai__sys' }[tipo], txt);
+          await espera(tipo === 'sys' ? 1400 : 900);
+        }
+        await espera(2600); box.classList.add('limpa'); await espera(600);
+      }
+      rodando = false;
+    };
+    new IntersectionObserver(es => es.forEach(e => { vivo = e.isIntersecting; if (vivo) roda(); })).observe(box);
+  });
+
   /* luz de borda no ponteiro */
   if (matchMedia('(hover:hover)').matches) $$('[data-luz]').forEach(grupo => {
     const cards = $$('.luz', grupo); let tx = 0, ty = 0, cx = 0, cy = 0, dentro = false, raf = 0;
@@ -142,14 +198,22 @@
     grupo.addEventListener('pointerleave', () => { dentro = false; grupo.classList.remove('luz-on'); });
   });
 
-  /* ---------- COMO FUNCIONA: celular preso ---------- */
-  const telas = $$('.scr'), passos = $$('.step'), phone = $('.phone');
-  const ativar = i => { telas.forEach((t, k) => t.classList.toggle('is-on', k === i)); passos.forEach((p, k) => p.classList.toggle('on', k === i)); if (i === 2) contar($('.gr__v [data-count]'), 300); };
-  passos.forEach((p, i) => ScrollTrigger.create({ trigger: p, start: 'top 58%', end: 'bottom 58%', onToggle: s => s.isActive && ativar(i) }));
+  /* ---------- COMO FUNCIONA: seção presa, efeito acontece, depois solta ---------- */
+  const telas = $$('.scr'), passos = $$('.step'), phone = $('.phone'), barras2 = $$('.como__bar i'); let passoAt = -1;
+  const ativar = i => { if (i === passoAt) return; passoAt = i;
+    telas.forEach((t, k) => t.classList.toggle('is-on', k === i));
+    passos.forEach((p, k) => { p.classList.toggle('on', k === i); p.classList.toggle('out', k < i); });
+    barras2.forEach((b, k) => b.classList.toggle('on', k === i));
+    if (i === 2) contar($('.gr__v [data-count]'), 300); };
   ativar(0);
-  gsap.fromTo(phone, { rotateY: -26, rotateX: 10, rotate: -5 }, { rotateY: 22, rotateX: -6, rotate: 4, ease: 'none', transformPerspective: 1200, scrollTrigger: { trigger: '.como', start: 'top bottom', end: 'bottom top', scrub: .8 } });
-  gsap.to('.obj--p1', { y: -220, ease: 'none', scrollTrigger: { trigger: '.como', start: 'top bottom', end: 'bottom top', scrub: 1 } });
-  gsap.to('.obj--p2', { y: 180, ease: 'none', scrollTrigger: { trigger: '.como', start: 'top bottom', end: 'bottom top', scrub: 1 } });
+  ScrollTrigger.create({ trigger: '.como', pin: true, start: 'top top', end: () => '+=' + innerHeight * 2.4, scrub: true, anticipatePin: 1, invalidateOnRefresh: true,
+    onUpdate: s => { const p = s.progress * 3, k = Math.min(2, Math.floor(p));
+      ativar(k); barras2.forEach((b, n) => b.style.setProperty('--f', n < k ? 1 : n === k ? Math.min(1, p - k) : 0));
+      gsap.set(phone, { rotate: -4 + s.progress * 8, y: (s.progress - .5) * -30 }); } });
+  if (desk) {
+    gsap.to('.obj--p1', { y: -220, rotate: 30, ease: 'none', scrollTrigger: { trigger: '.como', start: 'top top', end: () => '+=' + innerHeight * 2.4, scrub: 1 } });
+    gsap.to('.obj--p2', { y: 160, rotate: -24, ease: 'none', scrollTrigger: { trigger: '.como', start: 'top top', end: () => '+=' + innerHeight * 2.4, scrub: 1 } });
+  }
 
   /* ---------- GANHOS ---------- */
   const rS = $('#rSubs'), rP = $('#rPrice'), barras = $$('.calc__bars i'), tot = { v: 0 };
@@ -165,16 +229,21 @@
   gsap.fromTo('.painel__flame', { yPercent: 25, rotate: -14 }, { yPercent: -25, rotate: 10, ease: 'none', scrollTrigger: { trigger: '.painel', start: 'top bottom', end: 'bottom top', scrub: true } });
   gsap.fromTo('.painel', { scale: .9, borderRadius: 80 }, { scale: 1, borderRadius: 44, ease: 'none', scrollTrigger: { trigger: '.painel', start: 'top bottom', end: 'top 30%', scrub: true } });
 
-  /* ---------- HERO: vídeo em laço com volta suave para a foto ---------- */
-  const hv = document.querySelector('.hero__vid');
-  if (hv) {
-    const toca = () => { hv.currentTime = 0; hv.play().then(() => hv.classList.add('on')).catch(() => {}); };
-    hv.addEventListener('timeupdate', () => { if (hv.duration && hv.currentTime > hv.duration - 1.3) hv.classList.remove('on'); });
-    hv.addEventListener('ended', () => setTimeout(toca, 250));
-    hv.addEventListener('canplaythrough', toca, { once: true });
-    if (hv.readyState > 3) toca();
-    new IntersectionObserver(es => es.forEach(e => e.isIntersecting ? (hv.paused && toca()) : hv.pause())).observe(hv);
-  }
+  /* ---------- HERO: quatro cenas em sequência com fusão ---------- */
+  (() => {
+    const vs = $$('.hero__vid'); if (!vs.length) return;
+    let k = 0, vivo = true, troca = 0;
+    const tocar = i => { const v = vs[i]; v.preload = 'auto'; v.currentTime = 0; v.play().catch(() => {});
+      vs.forEach((o, n) => o.classList.toggle('on', n === i));
+      const prox = vs[(i + 1) % vs.length]; prox.preload = 'auto'; prox.load && prox.readyState < 2 && prox.load(); };
+    const avancar = () => { k = (k + 1) % vs.length; tocar(k); };
+    vs.forEach(v => v.addEventListener('timeupdate', () => {
+      if (v !== vs[k] || !v.duration) return;
+      if (v.currentTime > v.duration - 1.1 && Date.now() - troca > 1500) { troca = Date.now(); avancar(); } }));
+    const comecar = () => tocar(0);
+    vs[0].readyState > 2 ? comecar() : vs[0].addEventListener('canplay', comecar, { once: true });
+    new IntersectionObserver(es => es.forEach(e => { vivo = e.isIntersecting; const v = vs[k]; vivo ? v.play().catch(() => {}) : v.pause(); })).observe($('.hero'));
+  })();
 
   /* ---------- GIRO: vídeo decodificado em quadros e preso ao scroll ---------- */
   (() => {
@@ -199,7 +268,7 @@
         for (let i = 0; i < N; i++) {
           v.currentTime = dur * i / (N - 1);
           await new Promise(ok => v.addEventListener('seeked', ok, { once: true }));
-          quadros.push(await createImageBitmap(v, { resizeWidth: lado, resizeHeight: lado, resizeQuality: 'medium' }));
+          const oc = document.createElement('canvas'); oc.width = oc.height = lado; oc.getContext('2d').drawImage(v, 0, 0, lado, lado); quadros.push(oc);
         }
         pronto = true; atual = -1; pinta();
       } catch (e) { /* sem vídeo: fica a imagem parada */ }

@@ -44,13 +44,12 @@
 <!-- ================= HERO ================= -->
 <section class="hero">
   <div class="hero__card">
-    <div class="hero__bg"><img src="assets/web/g_glow.jpg" alt=""><video class="hero__vid" muted playsinline preload="auto" poster="assets/web/g_glow.jpg" src="assets/video/hero.mp4"></video></div>
+    <div class="hero__bg"><img src="assets/web/ig_03.jpg" alt=""><video class="hero__vid" muted playsinline preload="auto" src="assets/video/h_tenis.mp4" style="object-position:50% 40%"></video><video class="hero__vid" muted playsinline preload="metadata" src="assets/video/h_gym.mp4" style="object-position:55% 40%"></video><video class="hero__vid" muted playsinline preload="metadata" src="assets/video/h_iate.mp4" style="object-position:50% 35%"></video><video class="hero__vid" muted playsinline preload="metadata" src="assets/video/h_villa.mp4" style="object-position:45% 40%"></video></div>
     <div class="hero__shade"></div>
     <div class="grain"></div>
 
     <!-- objetos 3D -->
     <img class="obj obj--heart" data-depth=".9" src="assets/web/o_heart.webp" alt="">
-    <img class="obj obj--bubble" data-depth=".5" src="assets/web/o_bubble.webp" alt="">
     <img class="obj obj--coin" data-depth="1.3" src="assets/web/o_coin.webp" alt="">
 
     <!-- chips de interface -->
@@ -90,7 +89,7 @@
     <div class="zoom__glow"></div>
     <p class="zoom__w zoom__w--l">Seu<br>conteúdo.</p>
     <p class="zoom__w zoom__w--r">Suas<br><span class="hl">regras.</span></p>
-    <div class="zoom__photo"><img src="assets/web/ig_05.jpg" alt="Creator usando a Clozy no celular"></div>
+    <div class="zoom__photo"><img src="assets/web/ig_05.jpg" alt="Creator usando a Clozy no celular"><canvas class="zoom__cv" data-h="assets/video/barco_h.mp4"></canvas></div>
     <div class="zoom__in">
       <p class="eyebrow"><i></i>TUDO EM UM SÓ LUGAR</p>
       <h2>Sua <span class="hl">renda.</span></h2>
@@ -135,7 +134,7 @@
       </article>
 
       <article class="fc luz">
-        <div class="fc__viz"><img src="assets/web/g_a.jpg" alt="" style="object-position:50% 40%">
+        <div class="fc__viz"><img src="assets/web/ig_11.jpg" alt="" style="object-position:50% 30%">
           <div class="livebar"><b>LIVE</b><span>1,2k assistindo</span></div>
           <div class="hearts"><i></i><i></i><i></i><i></i><i></i></div>
           <div class="mimo">Mimo recebido <b>R$ 50,00</b></div>
@@ -155,12 +154,7 @@
 
       <article class="fc fc--pink luz">
         <div class="fc__viz fc__viz--ai">
-          <div class="ai">
-            <p class="ai__in">Oi! Vi seu perfil agora</p>
-            <p class="ai__out"><small>Resposta automática</small>Que bom te ver aqui! Meu conteúdo VIP está liberado para assinantes.</p>
-            <p class="ai__out ai__out--btn">Assinar agora →</p>
-            <p class="ai__typing"><i></i><i></i><i></i></p>
-          </div>
+          <div class="ai" data-chat aria-label="Conversa de exemplo com resposta automática"></div>
         </div>
         <div class="fc__b"><span class="fc__n">06 /</span><h3>IA e automações</h3><p>Mensagens e ofertas trabalhando por você, mesmo quando você está offline.</p></div>
       </article>
@@ -176,11 +170,13 @@
 </section>
 
 <!-- ================= COMO FUNCIONA (celular preso) ================= -->
-<section class="como" id="como">
+<div class="divisor-wrap">
   <div class="divisor" aria-hidden="true">
     <svg class="divisor__curva" viewBox="0 0 130 38"><path d="M0 0C28 0 34 38 65 38C96 38 102 0 130 0Z"/></svg>
     <span class="divisor__selo"><svg viewBox="0 0 5.5 7.5" width="6"><path d="M2.75 0V7.5M2.75 7.5L0 4.75M2.75 7.5L5.5 4.75" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
   </div>
+</div>
+<section class="como" id="como">
   <div class="como__bg" aria-hidden="true"></div>
   <div class="wrap como__grid">
     <div class="como__steps">
@@ -188,6 +184,7 @@
         <p class="eyebrow rv"><i></i>COMO FUNCIONA</p>
         <h2 class="rv">Do cadastro ao <span class="hl">primeiro pagamento.</span></h2>
       </div>
+      <div class="como__stage">
       <div class="step" data-step="0">
         <span class="step__n">/01</span>
         <h3>Crie seu perfil</h3>
@@ -203,6 +200,8 @@
         <h3>Receba pelo que cria</h3>
         <p>Assinaturas, conteúdos pagos, mimos e links de pagamento caem na sua Atividade, com tudo detalhado.</p>
       </div>
+      </div>
+      <div class="como__bar"><i></i><i></i><i></i></div>
     </div>
 
     <div class="como__phone">
@@ -252,7 +251,6 @@
       <img class="obj obj--p1" src="assets/web/o_coin.webp" alt="">
       <img class="obj obj--p2" src="assets/web/o_heart.webp" alt="">
       <div class="phone__ring"></div>
-      <p class="ilus">Telas ilustrativas</p>
     </div>
   </div>
 </section>
