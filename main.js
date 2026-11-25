@@ -97,30 +97,31 @@
 
   /* ---------- ZOOM DA CHAMA + vídeo do barco preso ao scroll ---------- */
   const foto = $('.zoom__photo'), fimg = $('img', foto), zcv = $('.zoom__cv'), zctx = zcv.getContext('2d');
-  const zq = []; let zw = 0, zh = 0, zPronto = false, zAt = -1;
+  // sequência de imagens: carrega do mais espaçado para o mais fino e pinta o quadro pronto mais próximo
+  const sequencia = (pasta, n, aoCarregar) => {
+    const q = new Array(n), passo = desk ? 1 : 2, ordem = [0, n - 1];
+    for (let s = 16; s >= passo; s /= 2) for (let i = 0; i < n; i += s) if (!ordem.includes(i)) ordem.push(i);
+    let k = 0;
+    const prox = () => { if (k >= ordem.length) return; const i = ordem[k++], im = new Image();
+      im.onload = () => { q[i] = im; aoCarregar(i); prox(); }; im.onerror = prox;
+      im.src = pasta + '/' + String(i).padStart(3, '0') + '.webp'; };
+    return { q, inicia: () => { for (let c = 0; c < 6; c++) prox(); },
+      perto: i => { for (let d = 0; d < n; d++) { if (q[i - d]) return i - d; if (q[i + d]) return i + d; } return -1; } };
+  };
+  const ZN = 72; let zw = 0, zh = 0, zPronto = false, zAt = -1;
   const vid = { p: 0 };
   const cover = () => { const W = innerWidth, H = innerHeight, k = Math.max(W / zw, H / zh); const fx = W < H ? .47 : .5; return { k, ox: Math.min(0, Math.max(W - zw * k, W / 2 - zw * k * fx)), oy: (H - zh * k) * .32 }; };
   const zPinta = () => {
     if (!zPronto) return;
-    const i = Math.min(zq.length - 1, Math.round((1 - vid.p) * (zq.length - 1)));
-    if (i !== zAt) { zAt = i; const c = cover(); zctx.clearRect(0, 0, zcv.width, zcv.height); zctx.drawImage(zq[i], c.ox * devicePixelRatio, c.oy * devicePixelRatio, zw * c.k * devicePixelRatio, zh * c.k * devicePixelRatio); }
+    const i = zs.perto(Math.round(vid.p * (ZN - 1)));
+    if (i >= 0 && i !== zAt) { zAt = i; const c = cover(), r = devicePixelRatio; zctx.clearRect(0, 0, zcv.width, zcv.height); zctx.drawImage(zs.q[i], c.ox * r, c.oy * r, zw * c.k * r, zh * c.k * r); }
   };
   const zRes = () => { zcv.width = innerWidth * devicePixelRatio; zcv.height = innerHeight * devicePixelRatio; zAt = -1; zPinta(); };
   addEventListener('resize', zRes);
-  (async () => {
-    try {
-      const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = zcv.dataset.h;
-      await new Promise((ok, no) => { v.addEventListener('loadeddata', ok, { once: true }); v.addEventListener('error', no, { once: true }); });
-      zw = v.videoWidth; zh = v.videoHeight; zRes();
-      const N = desk ? 90 : 50, larg = desk ? Math.min(zw, 1280) : 640, alt = Math.round(larg * zh / zw), dur = v.duration - .08;
-      for (let i = 0; i < N; i++) {
-        v.currentTime = dur * i / (N - 1);
-        await new Promise(ok => v.addEventListener('seeked', ok, { once: true }));
-        const oc = document.createElement('canvas'); oc.width = larg; oc.height = alt; oc.getContext('2d').drawImage(v, 0, 0, larg, alt); zq.push(oc);
-      }
-      zPronto = true; zAt = -1; zPinta(); zcv.classList.add('on'); fimg.style.opacity = 0;
-    } catch (e) { /* sem vídeo: fica a foto */ }
-  })();
+  const zs = sequencia(zcv.dataset.seq, ZN, i => {
+    if (!zPronto) { zw = zs.q[i].naturalWidth; zh = zs.q[i].naturalHeight; zPronto = true; zRes(); zcv.classList.add('on'); fimg.style.opacity = 0; }
+    zAt = -1; zPinta(); });
+  zs.inicia();
   const tl = gsap.timeline({ scrollTrigger: { trigger: '.zoom', start: 'top top', end: 'bottom bottom', scrub: .5 } });
   const z = { p: 0 };
   tl.to(z, { p: 1, duration: 1, ease: 'power2.in', onUpdate: () => {
@@ -248,32 +249,18 @@
   /* ---------- GIRO: vídeo decodificado em quadros e preso ao scroll ---------- */
   (() => {
     const cv = document.querySelector('.giro__cv'); if (!cv) return;
-    const ctx = cv.getContext('2d'), N = desk ? 80 : 44, quadros = [];
+    const ctx = cv.getContext('2d'), N = 60;
     let pronto = false, atual = -1, prog = 0;
     const poster = new Image(); poster.src = cv.dataset.poster;
     poster.onload = () => { if (!pronto) ctx.drawImage(poster, 0, 0, cv.width, cv.height); };
     const pinta = () => {
       if (!pronto) return;
-      const i = Math.min(quadros.length - 1, Math.round(prog * (quadros.length - 1)));
-      if (i === atual || !quadros[i]) return; atual = i;
-      ctx.clearRect(0, 0, cv.width, cv.height); ctx.drawImage(quadros[i], 0, 0, cv.width, cv.height);
+      const i = gs.perto(Math.round(prog * (N - 1)));
+      if (i < 0 || i === atual) return; atual = i;
+      ctx.clearRect(0, 0, cv.width, cv.height); ctx.drawImage(gs.q[i], 0, 0, cv.width, cv.height);
     };
-    let carregando = false;
-    const carrega = async () => {
-      if (carregando) return; carregando = true;
-      try {
-        const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = cv.dataset.src;
-        await new Promise((ok, no) => { v.addEventListener('loadeddata', ok, { once: true }); v.addEventListener('error', no, { once: true }); });
-        const lado = desk ? 640 : 420, dur = v.duration - .08;
-        for (let i = 0; i < N; i++) {
-          v.currentTime = dur * i / (N - 1);
-          await new Promise(ok => v.addEventListener('seeked', ok, { once: true }));
-          const oc = document.createElement('canvas'); oc.width = oc.height = lado; oc.getContext('2d').drawImage(v, 0, 0, lado, lado); quadros.push(oc);
-        }
-        pronto = true; atual = -1; pinta();
-      } catch (e) { /* sem vídeo: fica a imagem parada */ }
-    };
-    new IntersectionObserver((es, o) => es.forEach(e => { if (e.isIntersecting) { carrega(); o.disconnect(); } }), { rootMargin: '250% 0px' }).observe(cv);
+    const gs = sequencia(cv.dataset.seq, N, () => { pronto = true; atual = -1; pinta(); });
+    new IntersectionObserver((es, o) => es.forEach(e => { if (e.isIntersecting) { gs.inicia(); o.disconnect(); } }), { rootMargin: '250% 0px' }).observe(cv);
     const ws = [...document.querySelectorAll('.giro__w')], dots = [...document.querySelectorAll('.giro__dots i')]; let passo = 0;
     ScrollTrigger.create({ trigger: '.giro', start: 'top top', end: 'bottom bottom', scrub: .4,
       onUpdate: s => { prog = s.progress; pinta();
