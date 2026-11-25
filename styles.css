@@ -357,9 +357,9 @@ h2{font-size:clamp(34px,4.3vw,62px)}
 
 /* FIM */
 .fim{position:relative;background:var(--bg);overflow:hidden;padding-top:clamp(110px,13vw,190px);isolation:isolate}
-.fim__arco{position:absolute;left:50%;top:40%;width:min(2200px,220%);aspect-ratio:1;translate:-50% 0;border-radius:50%;z-index:-1;
+.fim__arco{position:absolute;left:50%;top:calc(clamp(110px,13vw,190px) + min(300px,52vw)*.42);width:min(2200px,220%);aspect-ratio:1;translate:-50% 0;border-radius:50%;z-index:-1;
   background:linear-gradient(180deg,rgb(255 0 149/.75) 0,rgb(255 0 149/.3) 6%,rgb(255 0 149/.08) 16%,transparent 26%);border-top:1.5px solid rgb(255 180 225/.8);box-shadow:0 -40px 110px -20px rgb(255 0 149/.6)}
-.fim__flame{width:min(300px,52vw);margin:0 auto -10px;will-change:transform}
+.fim__flame{position:relative;z-index:2;width:min(300px,52vw);margin:0 auto -10px;will-change:transform}
 .fim__flame img{mix-blend-mode:screen}
 .fim__txt{text-align:center;display:flex;flex-direction:column;align-items:center}
 .fim h2{font-size:clamp(38px,5.6vw,88px);font-weight:300;letter-spacing:-.05em;max-width:11em}
